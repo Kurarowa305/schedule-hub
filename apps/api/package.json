@@ -1,0 +1,17 @@
+{
+  "name": "@schedule-hub/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@schedule-hub/shared": "*"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
