@@ -4,6 +4,8 @@
 
 本書は、Schedule Hub MVPで利用するAPIインターフェースを定義する。
 
+MCP ToolのJSON Schemaは [MCP Tool詳細設計](./MCP%20Tool詳細設計.md) の「1.1 正式Tool Schema」を正本とする。
+
 対象は以下の3系統とする。
 
 1. Web設定画面から利用するREST API
@@ -124,7 +126,7 @@ destinationId       dest_<id>
 operationId         op_<id>
 ```
 
-ID生成方式はUUID / ULID等を実装時に決定する。
+内部IDはprefix付きULIDを使用する。operationIdはClaudeが生成し、同一の作成意図を再試行するときに再利用する。
 
 ### 4.4 REST API成功Response
 
@@ -621,305 +623,13 @@ create_schedule
 
 ---
 
-## 13. MCP Tool: get_schedule_context
+## 13. MCP Tool Schema
 
-### 13.1 用途
+get_schedule_contextとcreate_scheduleの正式なTool Schema、入力検証、出力、Tool Errorは [MCP Tool詳細設計](./MCP%20Tool詳細設計.md) の「1.1 正式Tool Schema」に定義する。
 
-Claudeが予定日時やLogical Destinationを判断するために必要なユーザー固有設定を取得する。
+MCP APIはそのSchemaを実装上の唯一の契約とし、Physical Calendar ID、Provider Calendar ID、Connection ID、Googleアカウント識別子、Access Token、Refresh TokenをClaudeへ公開しない。
 
-Claudeは予定登録前に、必要に応じてこのToolを呼ぶ。
-
-### 13.2 Tool定義
-
-```json
-{
-  "name": "get_schedule_context",
-  "title": "Get Schedule Context",
-  "description": "Get the authenticated user's schedule defaults and logical calendar destinations. Use this before choosing a destination or interpreting missing schedule defaults. Never infer physical calendar IDs.",
-  "inputSchema": {
-    "type": "object",
-    "additionalProperties": false
-  },
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "timezone": { "type": "string" },
-      "defaultDurationMinutes": { "type": "integer" },
-      "defaultDestinationIds": {
-        "type": "array",
-        "items": { "type": "string" }
-      },
-      "destinations": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "name": { "type": "string" },
-            "aliases": {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "description": { "type": "string" }
-          },
-          "required": ["id", "name", "aliases", "description"]
-        }
-      }
-    },
-    "required": ["timezone", "defaultDurationMinutes", "defaultDestinationIds", "destinations"]
-  },
-  "annotations": {
-    "readOnlyHint": true,
-    "destructiveHint": false,
-    "idempotentHint": true,
-    "openWorldHint": false
-  }
-}
-```
-
-### 13.3 Response例
-
-```json
-{
-  "timezone": "Asia/Tokyo",
-  "defaultDurationMinutes": 120,
-  "defaultDestinationIds": ["dest_private"],
-  "destinations": [
-    {
-      "id": "dest_work",
-      "name": "仕事",
-      "aliases": ["会社", "業務", "work"],
-      "description": "会議、出社、顧客対応など仕事に関する予定"
-    },
-    {
-      "id": "dest_private",
-      "name": "プライベート",
-      "aliases": ["個人", "自分"],
-      "description": "個人的な予定"
-    }
-  ]
-}
-```
-
-Physical Calendar ID、connectionId、Provider Tokenは返さない。
-
----
-
-## 14. MCP Tool: create_schedule
-
-### 14.1 用途
-
-Claudeが解釈・確認済みの予定をLogical Destinationへ登録する。
-
-### 14.2 Input
-
-```json
-{
-  "name": "create_schedule",
-  "title": "Create Schedule",
-  "description": "Create a calendar event for the authenticated user. Resolve the user's natural-language intent into logical destination IDs returned by get_schedule_context. Ask the user before calling this tool when required date, time, or destination cannot be determined reliably. Never supply provider calendar IDs.",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "operationId": {
-        "type": "string",
-        "description": "Unique ID for this create intent. Generate it once and reuse the same value when retrying the same intended creation."
-      },
-      "title": {
-        "type": "string",
-        "minLength": 1
-      },
-      "scheduleType": {
-        "type": "string",
-        "enum": ["TIMED", "ALL_DAY"]
-      },
-      "start": {
-        "type": "string",
-        "description": "RFC3339 date-time for TIMED events, or YYYY-MM-DD for ALL_DAY events."
-      },
-      "end": {
-        "type": ["string", "null"],
-        "description": "Optional end. If omitted for TIMED events, Schedule Hub applies the user's default duration."
-      },
-      "timezone": {
-        "type": ["string", "null"],
-        "description": "IANA time zone. If omitted, Schedule Hub uses the user's configured time zone."
-      },
-      "destinationIds": {
-        "type": "array",
-        "items": { "type": "string" },
-        "uniqueItems": true,
-        "description": "Logical destination IDs. If empty, Schedule Hub applies the user's default destinations."
-      },
-      "location": {
-        "type": ["string", "null"]
-      },
-      "description": {
-        "type": ["string", "null"]
-      },
-      "assumptions": {
-        "type": "array",
-        "items": { "type": "string" }
-      },
-      "destinationInference": {
-        "type": ["object", "null"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["EXPLICIT", "ALIAS", "SEMANTIC", "DEFAULT"]
-          },
-          "reason": { "type": "string" }
-        },
-        "required": ["type", "reason"]
-      },
-      "sourceText": {
-        "type": ["string", "null"],
-        "description": "Optional original user utterance. It is not retained long term by Schedule Hub."
-      }
-    },
-    "required": ["operationId", "title", "scheduleType", "start", "destinationIds"],
-    "additionalProperties": false
-  },
-  "annotations": {
-    "readOnlyHint": false,
-    "destructiveHint": false,
-    "idempotentHint": true,
-    "openWorldHint": true
-  }
-}
-```
-
-### 14.3 Validation
-
-共通:
-
-- `title` 必須
-- `start` 必須
-- `operationId` 必須
-- `destinationIds` は認証ユーザーのLogical Destinationのみ許可
-- disabled Destinationは拒否
-
-TIMED:
-
-- `start` はRFC3339 date-time
-- `end` 未指定時はdefaultDurationMinutesを利用
-- `timezone` 未指定時はUserPreferenceを利用
-- `end > start`
-
-ALL_DAY:
-
-- `start` はYYYY-MM-DD
-- `end` 未指定時は翌日を設定
-
-### 14.4 Output
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "operationId": { "type": "string" },
-    "status": {
-      "type": "string",
-      "enum": ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"]
-    },
-    "schedule": {
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "scheduleType": { "type": "string" },
-        "start": { "type": "string" },
-        "end": { "type": "string" },
-        "timezone": { "type": ["string", "null"] }
-      },
-      "required": ["title", "scheduleType", "start", "end", "timezone"]
-    },
-    "destinations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "status": {
-            "type": "string",
-            "enum": ["CREATED", "PARTIAL", "FAILED"]
-          },
-          "errorCode": { "type": ["string", "null"] }
-        },
-        "required": ["id", "name", "status", "errorCode"]
-      }
-    }
-  },
-  "required": ["operationId", "status", "schedule", "destinations"]
-}
-```
-
-Response例:
-
-```json
-{
-  "operationId": "op_xxx",
-  "status": "SUCCESS",
-  "schedule": {
-    "title": "顧客との定例",
-    "scheduleType": "TIMED",
-    "start": "2026-08-14T10:00:00+09:00",
-    "end": "2026-08-14T11:00:00+09:00",
-    "timezone": "Asia/Tokyo"
-  },
-  "destinations": [
-    {
-      "id": "dest_work",
-      "name": "仕事",
-      "status": "CREATED",
-      "errorCode": null
-    }
-  ]
-}
-```
-
-MCP `structuredContent` に上記JSONを設定し、互換性のため `content` にも簡潔なJSON/Textを返す。
-
----
-
-## 15. MCP Error設計
-
-### 15.1 Protocol Error
-
-以下はJSON-RPC Errorとする。
-
-- 不正JSON-RPC
-- 不明method
-- 不明Tool
-- Tool Call Request自体のSchema不正
-
-### 15.2 Tool Execution Error
-
-以下はMCP Tool Resultの `isError=true` とする。
-
-- 日時Validation Error
-- Destination不存在
-- Destination無効
-- Provider認証失効
-- Provider API Error
-- Physical Calendar書込不可
-- business rule error
-
-例:
-
-```json
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "The selected destination no longer exists. Call get_schedule_context again and choose a valid destination."
-    }
-  ],
-  "isError": true
-}
-```
-
-LLMが自己修正できるよう、Tool Execution ErrorはactionableなMessageにする。
+create_scheduleは、Claude生成のoperationIdを冪等キーとして扱う。destinationIdsは1件以上必須で、TimezoneはTool Inputから受け取らずUserPreferenceを使用する。
 
 ---
 
@@ -930,8 +640,7 @@ LLMが自己修正できるよう、Tool Execution ErrorはactionableなMessage�
 2. Tool Input Validation
 3. operationId Conditional Put
 4. PROFILE取得
-5. destinationIds確定
-   └ 空の場合defaultDestinationIds
+5. destinationIds検証（1件以上必須）
 6. LogicalDestination取得・検証
 7. physicalCalendarIdsを集約
 8. PhysicalCalendar ID重複排除
@@ -1045,6 +754,6 @@ find_free_time
 3. ClaudeへPhysical Calendar IDやProvider Tokenを公開しない。
 4. `destinationId` はSchedule Hubが生成する不変内部IDとし、Destination名称変更の影響を受けない。
 5. `create_schedule` の `operationId` を冪等キーとして利用する。
-6. `destinationIds=[]` の場合はサーバー側でdefaultDestinationIdsを適用できる。
+6. destinationIdsã¯1ä»¶ä»¥ä¸å¿é ã¨ããç»é²åæªæå®æã¯Claudeãget_schedule_contextã®defaultDestinationIdsãæç¤ºçã«æ¸¡ãã
 7. Provider固有差異はCalendar Adapterへ閉じ込め、Web/MCP API SchemaをProvider非依存に保つ。
 8. MCP Tool ResultはstructuredContent中心とし、LLMが再判断できるactionableなErrorを返す。

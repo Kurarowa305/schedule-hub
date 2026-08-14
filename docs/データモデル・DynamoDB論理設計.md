@@ -274,6 +274,8 @@ SK = DEST#<destinationId>
 ```
 
 MVPではDestinationMappingを独立Itemにせず、`physicalCalendarIds` をLogicalDestinationへ保持する。
+既存資料中のDestinationMappingは、LogicalDestination.physicalCalendarIdsが表す概念上の関係を指し、DynamoDBの独立Entityではない。
+
 
 ---
 
