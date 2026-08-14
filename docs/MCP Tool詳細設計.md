@@ -4,6 +4,39 @@
 
 本書は、Schedule Hub MVPでClaude公式チャットから利用するMCP Toolの詳細仕様を定義する。
 
+本書の「1.1 正式Tool Schema」をMVPのMCP Tool Schemaの正本とする。API設計、データフロー、要件、実装チケットは本節に従う。
+
+## 1.1 正式Tool Schema
+
+### 共通規約
+
+- JSON Schema Draft 2020-12を使用する。
+- Schedule Hub側の内部IDはprefix付きULIDとする。operationIdはClaudeが予定作成意図ごとに生成し、同じ意図の再試行で再利用する。
+- 成功・状態のenumは大文字で統一する。
+- Tool Inputにtimezoneは含めず、認証ユーザーのUserPreferenceを使用する。
+
+### get_schedule_context
+
+入力は空のobjectとし、追加プロパティを許可しない。出力はcurrentDateTime、timezone、defaultDurationMinutes、defaultDestinationIds、destinationsを必須とする。currentDateTimeはUserPreferenceのIANA Time Zoneへ変換したRFC3339日時である。defaultDurationMinutesは1から1440分とする。
+
+destinationsは最大50件とし、各要素はid、name、aliases、descriptionを必須とする。aliasesは最大20件、1件あたり50文字、descriptionは最大500文字とする。無効なDestination、Physical Calendar ID、Provider Calendar ID、Connection ID、Googleアカウント識別子、Access Token、Refresh Tokenは返さない。
+
+### create_scheduleの入力
+
+必須項目はoperationId、title、scheduleType、start、destinationIds、destinationInferenceである。operationIdは正規表現 ^op_[0-9A-HJKMNP-TV-Z]{26}$ に適合する。titleは1から200文字、destinationIdsは1から50件の重複なし配列とする。
+
+scheduleTypeはTIMEDまたはALL_DAYである。TIMEDのstartはRFC3339日時で、end未指定時はUserPreferenceのdefaultDurationMinutesを適用する。ALL_DAYのstartとendは日付で、endはユーザー視点のinclusiveな最終日として受け取り、Providerにはexclusiveな終了日へ変換する。
+
+locationは最大500文字、descriptionは最大5000文字、assumptionsは最大20件かつ各500文字、sourceTextは最大2000文字とする。destinationInferenceはtypeとreasonを必須とし、typeはEXPLICIT、ALIAS_MATCH、SEMANTIC_INFERENCE、DEFAULT、CONFIRMED_BY_USERのいずれか、reasonは最大500文字とする。
+
+### create_scheduleの出力とエラー
+
+出力の必須項目はoperationId、status、replayed、schedule、destinationsである。statusはSUCCESS、PARTIAL_SUCCESS、FAILEDのいずれかとする。scheduleはtitle、scheduleType、start、end、timezoneを必須とする。各Destination結果はid、name、status、errorCodeを必須とし、statusはCREATED、PARTIAL_SUCCESS、FAILEDのいずれかとする。
+
+JSON-RPCのプロトコルエラーと業務エラーを分離する。業務エラーはisError=trueのTool Resultで返し、代表コードはINVALID_DATETIME、INVALID_DESTINATION、DESTINATION_DISABLED、NO_WRITABLE_CALENDAR、PROVIDER_AUTH_EXPIRED、PROVIDER_API_ERROR、OPERATION_ID_CONFLICTとする。
+
+
+
 対象Toolは以下の2つとする。
 
 | Tool | 種別 | 役割 |
@@ -36,7 +69,7 @@ Schedule Hub
 - Provider API呼び出し
 - デフォルト終了時刻補完
 - 冪等制御
-- partial_success判定
+- PARTIAL_SUCCESS判定
 - 操作履歴保存
 ```
 
@@ -270,7 +303,6 @@ Schedule Hub
   "scheduleType": "TIMED",
   "start": "2026-08-14T10:00:00+09:00",
   "end": null,
-  "timezone": "Asia/Tokyo",
   "destinationIds": [
     "dest_work"
   ],
@@ -287,81 +319,7 @@ Schedule Hub
 
 # 6. create_schedule Input Schema
 
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "operationId": {
-      "type": "string",
-      "minLength": 1,
-      "description": "予定作成操作を一意に識別するID。同一操作の再試行では同じ値を使用する。"
-    },
-    "title": {
-      "type": "string",
-      "minLength": 1
-    },
-    "scheduleType": {
-      "type": "string",
-      "enum": ["TIMED", "ALL_DAY"]
-    },
-    "start": {
-      "type": "string"
-    },
-    "end": {
-      "type": ["string", "null"]
-    },
-    "timezone": {
-      "type": "string"
-    },
-    "destinationIds": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string"
-      }
-    },
-    "location": {
-      "type": ["string", "null"]
-    },
-    "description": {
-      "type": ["string", "null"]
-    },
-    "destinationInference": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "EXPLICIT",
-            "ALIAS_MATCH",
-            "SEMANTIC_INFERENCE",
-            "DEFAULT",
-            "CONFIRMED_BY_USER"
-          ]
-        },
-        "reason": {
-          "type": "string"
-        }
-      },
-      "required": ["type", "reason"]
-    }
-  },
-  "required": [
-    "operationId",
-    "title",
-    "scheduleType",
-    "start",
-    "timezone",
-    "destinationIds",
-    "destinationInference"
-  ]
-}
-```
-
----
+正式なInput Schemaは「1.1 正式Tool Schema」の「create_scheduleの入力」に定義する。本節では別のJSON Schemaを重複定義しない。
 
 # 7. destinationIds
 
@@ -549,7 +507,7 @@ ClaudeへはLogical Destination単位の結果を返し、Physical CalendarやPr
 ```json
 {
   "operationId": "op_01JXYZ...",
-  "status": "success",
+  "status": "SUCCESS",
   "replayed": false,
   "schedule": {
     "title": "顧客との定例",
@@ -581,13 +539,13 @@ Tool Inputで`end=null`だった場合でも、Outputには実際に登録した
 ```json
 {
   "operationId": "op_...",
-  "status": "partial_success",
+  "status": "PARTIAL_SUCCESS",
   "replayed": false,
   "destinations": [
     {
       "id": "dest_work",
       "name": "仕事",
-      "status": "partial_success"
+      "status": "PARTIAL_SUCCESS"
     }
   ],
   "warnings": [
