@@ -1,11 +1,11 @@
-# Separate Schedule Hub authentication from Google Calendar authorization
+# Schedule Hub認証とGoogle Calendar認可を分離する
 
-Status: accepted
+Status: accepted（採用）
 
-Schedule Hub uses Cognito with Google federation for Web and MCP identity, while Calendar access uses a separate direct Google OAuth flow. Web and MCP use separate Cognito App Clients but the same User Pool and Cognito `sub`; Calendar refresh tokens stay inside AWS and are stored in the user's Calendar Connection.
+Schedule HubはWebとMCPの識別にGoogle Federation付きCognitoを使い、Calendarアクセスには別の直接Google OAuthフローを使う。WebとMCPはCognito App Clientを分離するが、同じUser PoolとCognito subを使う。CalendarのRefresh TokenはAWS内部に留め、ユーザーのCalendar Connectionに保存する。
 
-## Consequences
+## 影響
 
-- Logging out does not disconnect Google Calendar.
-- Connection loss becomes `REAUTH_REQUIRED`; existing mappings and history remain.
-- Refresh tokens are never returned by REST/MCP APIs or written to logs.
+ - ログアウトしてもGoogle Calendar接続は解除しない。
+ - 接続失効時はREAUTH_REQUIREDとし、既存Mappingと履歴は保持する。
+ - Refresh TokenはREST/MCP APIから返さず、ログにも出力しない。

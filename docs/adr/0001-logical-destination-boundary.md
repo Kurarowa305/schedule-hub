@@ -1,11 +1,11 @@
-# Keep Logical Destinations at the MCP boundary
+# MCP境界ではLogical Destinationを扱う
 
-Status: accepted
+Status: accepted（採用）
 
-Claude and the MCP tools expose only Logical Destination IDs. Schedule Hub resolves those IDs to Physical Calendars internally, so provider calendar IDs, account identifiers, and OAuth credentials never cross the MCP boundary. This preserves the user-facing model and lets provider adapters evolve without changing the tool contract.
+ClaudeとMCP Toolが公開するのはLogical Destination IDだけとする。Schedule Hubが内部でPhysical Calendarへ解決するため、Provider側カレンダーID、アカウント識別子、OAuth認証情報はMCP境界を越えない。この構成により、ユーザー向けモデルを保ったままProvider Adapterを拡張できる。
 
-## Consequences
+## 影響
 
-- `create_schedule` validates destination ownership and enabled state on the server.
-- Multiple Logical Destinations resolving to the same Physical Calendar are deduplicated before provider calls.
-- The DynamoDB MVP model stores `physicalCalendarIds` on `LogicalDestination`; an independent Mapping entity is not introduced.
+- `create_schedule` サーバー側で登録先の所有者と有効状態を検証する.
+- 複数のLogical Destinationが同じPhysical Calendarへ解決された場合、Provider呼び出し前に重複排除する。
+ - DynamoDBのMVPモデルではLogicalDestinationにphysicalCalendarIdsを保持し、独立したMapping Entityは作成しない。
