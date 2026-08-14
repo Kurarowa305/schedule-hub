@@ -1,0 +1,7 @@
+node_modules
+coverage
+dist
+package-lock.json
+docs
+README.md
+CONTEXT.md
