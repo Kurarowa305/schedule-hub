@@ -138,7 +138,7 @@ Claudeが予定登録前に以下を把握するために利用する。
 ```json
 {
   "name": "get_schedule_context",
-  "title": "Get Schedule Context",
+  "title": "予定作成コンテキスト取得",
   "description": "予定の日時と登録先を判断するために、認証ユーザーのSchedule Hub設定を取得します。予定を作成する前に、現在時刻、タイムゾーン、デフォルト所要時間、デフォルト登録先、利用可能なLogical DestinationのID・名称・Alias・用途を確認するために使用してください。Physical Calendar IDやProvider上のCalendar IDは返しません。",
   "inputSchema": {
     "type": "object",
@@ -298,7 +298,7 @@ Schedule Hub
 
 ```json
 {
-  "operationId": "op_01JXYZ...",
+  "operationId": "op_01J5AR7Y5N3K8M2P6Q9T4VWXZB",
   "title": "顧客との定例",
   "scheduleType": "TIMED",
   "start": "2026-08-14T10:00:00+09:00",
@@ -506,7 +506,7 @@ ClaudeへはLogical Destination単位の結果を返し、Physical CalendarやPr
 
 ```json
 {
-  "operationId": "op_01JXYZ...",
+  "operationId": "op_01J5AR7Y5N3K8M2P6Q9T4VWXZB",
   "status": "SUCCESS",
   "replayed": false,
   "schedule": {
@@ -521,7 +521,8 @@ ClaudeへはLogical Destination単位の結果を返し、Physical CalendarやPr
     {
       "id": "dest_work",
       "name": "仕事",
-      "status": "created"
+      "status": "CREATED",
+      "errorCode": null
     }
   ],
   "warnings": []
@@ -534,18 +535,26 @@ Tool Inputで`end=null`だった場合でも、Outputには実際に登録した
 
 # 13. Partial Success
 
-同一Logical Destinationが複数Physical Calendarへ解決され、一部のみ作成成功した場合は`partial_success`とする。
+同一Logical Destinationが複数Physical Calendarへ解決され、一部のみ作成成功した場合は`PARTIAL_SUCCESS`とする。
 
 ```json
 {
-  "operationId": "op_...",
+  "operationId": "op_01J5AR7Y5N3K8M2P6Q9T4VWXZB",
   "status": "PARTIAL_SUCCESS",
   "replayed": false,
+  "schedule": {
+    "title": "顧客との定例",
+    "scheduleType": "TIMED",
+    "start": "2026-08-14T10:00:00+09:00",
+    "end": "2026-08-14T12:00:00+09:00",
+    "timezone": "Asia/Tokyo"
+  },
   "destinations": [
     {
       "id": "dest_work",
       "name": "仕事",
-      "status": "PARTIAL_SUCCESS"
+      "status": "PARTIAL_SUCCESS",
+      "errorCode": "PROVIDER_API_ERROR"
     }
   ],
   "warnings": [
@@ -576,6 +585,7 @@ Tool呼び出し自体は成立しているが、業務上処理できない場�
 | `PROVIDER_AUTH_EXPIRED` | Calendar Provider認証失効 | Webで再接続案内 |
 | `PROVIDER_API_ERROR` | Provider API失敗 | 再試行候補 |
 | `OPERATION_ID_CONFLICT` | operationId誤再利用 | 新operationIdで再構成 |
+| `OPERATION_IN_PROGRESS` | 同一Operationを別処理が実行中 | 同じoperationIdで時間を置いて再試行 |
 
 例:
 
