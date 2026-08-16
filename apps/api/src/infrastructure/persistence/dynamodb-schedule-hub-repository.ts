@@ -12,6 +12,7 @@ import type {
   StoredCalendarConnection,
   StoredCreateOperation,
   StoredOAuthState,
+  StoredPhysicalCalendar,
 } from "../../application/ports/schedule-hub-repository.js";
 
 interface CreateOperationItem extends StoredCreateOperation {
@@ -44,6 +45,12 @@ interface CalendarConnectionItem extends StoredCalendarConnection {
   readonly PK: string;
   readonly SK: string;
   readonly entityType: "CalendarConnection";
+}
+
+interface PhysicalCalendarItem extends StoredPhysicalCalendar {
+  readonly PK: string;
+  readonly SK: string;
+  readonly entityType: "PhysicalCalendar";
 }
 
 export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
@@ -310,6 +317,103 @@ export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
       updatedAt: item.updatedAt,
     };
   }
+  public async getCalendarConnection(
+    userId: string,
+    connectionId: string,
+  ): Promise<StoredCalendarConnection | null> {
+    const result = await this.client.send(
+      new GetCommand({
+        TableName: this.tableName,
+        Key: { PK: userPk(userId), SK: `CONN#${connectionId}` },
+        ConsistentRead: true,
+      }),
+    );
+    const item = result.Item as CalendarConnectionItem | undefined;
+    return item === undefined ? null : toStoredCalendarConnection(item);
+  }
+
+  public async putPhysicalCalendar(
+    userId: string,
+    calendar: StoredPhysicalCalendar,
+  ): Promise<void> {
+    const item: PhysicalCalendarItem = {
+      PK: userPk(userId),
+      SK: `PCAL#${calendar.physicalCalendarId}`,
+      entityType: "PhysicalCalendar",
+      ...calendar,
+    };
+    await this.client.send(
+      new PutCommand({ TableName: this.tableName, Item: item }),
+    );
+  }
+
+  public async listPhysicalCalendarsForAccount(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<readonly StoredPhysicalCalendar[]> {
+    const result = await this.client.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: "PK = :pk",
+        ExpressionAttributeValues: { ":pk": userPk(userId) },
+        ConsistentRead: true,
+      }),
+    );
+    const items = result.Items ?? [];
+    const connectionIds = new Set(
+      items
+        .filter(
+          (item) =>
+            item.entityType === "CalendarConnection" &&
+            item.provider === provider &&
+            item.accountIdentifier === accountIdentifier,
+        )
+        .map((item) => item.connectionId as string),
+    );
+    return items
+      .filter(
+        (item) =>
+          item.entityType === "PhysicalCalendar" &&
+          item.provider === provider &&
+          connectionIds.has(item.connectionId as string),
+      )
+      .map((item) => toStoredPhysicalCalendar(item as PhysicalCalendarItem));
+  }
+}
+
+function toStoredCalendarConnection(
+  item: CalendarConnectionItem,
+): StoredCalendarConnection {
+  return {
+    connectionId: item.connectionId,
+    provider: item.provider,
+    accountIdentifier: item.accountIdentifier,
+    accessToken: item.accessToken,
+    refreshToken: item.refreshToken,
+    accessTokenExpiresAt: item.accessTokenExpiresAt,
+    status: item.status,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+function toStoredPhysicalCalendar(
+  item: PhysicalCalendarItem,
+): StoredPhysicalCalendar {
+  return {
+    physicalCalendarId: item.physicalCalendarId,
+    provider: item.provider,
+    connectionId: item.connectionId,
+    externalCalendarId: item.externalCalendarId,
+    name: item.name,
+    accessRole: item.accessRole,
+    writable: item.writable,
+    status: item.status,
+    eventColorId: item.eventColorId,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
 }
 
 function toStoredCreateOperation(

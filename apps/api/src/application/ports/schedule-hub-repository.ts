@@ -1,6 +1,7 @@
 import type {
   CreateOperationStatus,
   LogicalDestination,
+  PhysicalCalendar,
   UserPreference,
 } from "@schedule-hub/shared";
 
@@ -30,6 +31,11 @@ export interface StoredCalendarConnection {
   readonly refreshToken: string;
   readonly accessTokenExpiresAt: number;
   readonly status: "ACTIVE" | "REAUTH_REQUIRED";
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface StoredPhysicalCalendar extends PhysicalCalendar {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -70,6 +76,19 @@ export interface ScheduleHubRepository {
     provider: "GOOGLE",
     accountIdentifier: string,
   ): Promise<StoredCalendarConnection | null>;
+  getCalendarConnection(
+    userId: string,
+    connectionId: string,
+  ): Promise<StoredCalendarConnection | null>;
+  listPhysicalCalendarsForAccount(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<readonly StoredPhysicalCalendar[]>;
+  putPhysicalCalendar(
+    userId: string,
+    calendar: StoredPhysicalCalendar,
+  ): Promise<void>;
   putCalendarConnection(
     userId: string,
     connection: StoredCalendarConnection,

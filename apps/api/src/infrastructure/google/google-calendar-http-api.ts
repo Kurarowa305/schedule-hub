@@ -4,6 +4,10 @@ import {
   type GoogleEventInsertRequest,
   type RefreshedGoogleAccessToken,
 } from "./google-calendar-adapter.js";
+import type {
+  GoogleCalendarListEntry,
+  GoogleCalendarListPage,
+} from "./google-calendar-catalog-adapter.js";
 
 export interface GoogleCalendarHttpApiOptions {
   readonly clientId: string;
@@ -34,15 +38,12 @@ export class GoogleCalendarHttpApi implements GoogleCalendarApi {
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     });
-    const response = await this.request(
-      "https://oauth2.googleapis.com/token",
-      {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-        signal: AbortSignal.timeout(this.#timeoutMs),
-      },
-    );
+    const response = await this.request("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      signal: AbortSignal.timeout(this.#timeoutMs),
+    });
     if (!response.ok) {
       throw new GoogleCalendarApiError(
         oauthErrorKind(response.status),
@@ -66,6 +67,56 @@ export class GoogleCalendarHttpApi implements GoogleCalendarApi {
     return {
       accessToken: token.access_token,
       accessTokenExpiresAt: this.#nowEpochSeconds() + token.expires_in,
+    };
+  }
+
+  public async listCalendarPage(
+    accessToken: string,
+    pageToken?: string,
+  ): Promise<GoogleCalendarListPage> {
+    const url = new URL(
+      "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+    );
+    if (pageToken !== undefined) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+    const response = await this.request(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(this.#timeoutMs),
+    });
+    if (!response.ok) {
+      throw new GoogleCalendarApiError(
+        calendarErrorKind(response.status),
+        `Google CalendarList APIに失敗しました（HTTP ${response.status}）`,
+      );
+    }
+    const body = (await response.json()) as {
+      readonly items?: unknown;
+      readonly nextPageToken?: unknown;
+    };
+    if (
+      body.items !== undefined &&
+      (!Array.isArray(body.items) ||
+        !body.items.every(isGoogleCalendarListEntry))
+    ) {
+      throw new GoogleCalendarApiError(
+        "PERMANENT",
+        "Google CalendarList APIから不正な応答が返されました",
+      );
+    }
+    if (
+      body.nextPageToken !== undefined &&
+      typeof body.nextPageToken !== "string"
+    ) {
+      throw new GoogleCalendarApiError(
+        "PERMANENT",
+        "Google CalendarList APIから不正なpageTokenが返されました",
+      );
+    }
+    return {
+      calendars: (body.items ?? []) as GoogleCalendarListEntry[],
+      nextPageToken: (body.nextPageToken as string | undefined) ?? null,
     };
   }
 
@@ -123,6 +174,22 @@ export class GoogleCalendarHttpApi implements GoogleCalendarApi {
       });
     }
   }
+}
+
+function isGoogleCalendarListEntry(
+  value: unknown,
+): value is GoogleCalendarListEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.id === "string" &&
+    entry.id.length > 0 &&
+    typeof entry.summary === "string" &&
+    (entry.accessRole === "owner" ||
+      entry.accessRole === "writer" ||
+      entry.accessRole === "reader" ||
+      entry.accessRole === "freeBusyReader")
+  );
 }
 
 function calendarErrorKind(status: number) {
