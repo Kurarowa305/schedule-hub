@@ -34,6 +34,7 @@ export interface AppProps {
   readonly initialPath?: string;
   readonly now?: () => number;
   readonly dashboard?: ReactNode;
+  readonly setup?: ReactNode;
 }
 
 type AuthState =
@@ -53,6 +54,7 @@ export function App({
   initialPath,
   now = Date.now,
   dashboard,
+  setup,
 }: AppProps) {
   const [queryClient] = useState(
     () =>
@@ -73,6 +75,7 @@ export function App({
           authSessionStore={authSessionStore}
           now={now}
           dashboard={dashboard}
+          setup={setup}
         />
       </Router>
     </QueryClientProvider>
@@ -83,9 +86,11 @@ function AuthRoutes({
   authSessionStore,
   now,
   dashboard,
+  setup,
 }: {
   readonly authSessionStore: AuthSessionStore;
   readonly now: () => number;
+  readonly setup?: ReactNode;
   readonly dashboard?: ReactNode;
 }) {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
@@ -143,15 +148,11 @@ function AuthRoutes({
       >
         <Route
           path="/setup"
-          element={<PlaceholderPage title="初回セットアップ" />}
+          element={setup ?? <PlaceholderPage title="初回セットアップ" />}
         />
         <Route
           path="/dashboard"
-          element={
-            <PlaceholderPage title="ダッシュボード">
-              {dashboard}
-            </PlaceholderPage>
-          }
+          element={dashboard ?? <PlaceholderPage title="ダッシュボード" />}
         />
         <Route
           path="/settings/calendars"
