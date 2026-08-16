@@ -119,6 +119,7 @@ const getScheduleContextSuccessSchema = {
 
 export const getScheduleContextOutputSchema = {
   $schema: schemaVersion,
+  type: "object",
   oneOf: [getScheduleContextSuccessSchema, toolErrorSchema],
 } as const;
 
@@ -309,6 +310,7 @@ const createScheduleSuccessSchema = {
 
 export const createScheduleOutputSchema = {
   $schema: schemaVersion,
+  type: "object",
   oneOf: [createScheduleSuccessSchema, toolErrorSchema],
 } as const;
 

@@ -11,6 +11,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1110.0",
     "@aws-sdk/lib-dynamodb": "^3.1110.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@schedule-hub/shared": "*"
   },
   "devDependencies": {
