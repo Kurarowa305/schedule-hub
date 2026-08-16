@@ -28,6 +28,13 @@ export interface AuthSessionStore {
   load(): Promise<AuthSession | null>;
   clear(): Promise<void>;
 }
+export interface AppPageElements {
+  readonly calendars: ReactNode;
+  readonly destinations: ReactNode;
+  readonly preferences: ReactNode;
+  readonly externalDisplay: ReactNode;
+  readonly operations: ReactNode;
+}
 
 export interface AppProps {
   readonly authSessionStore?: AuthSessionStore;
@@ -35,6 +42,7 @@ export interface AppProps {
   readonly now?: () => number;
   readonly dashboard?: ReactNode;
   readonly setup?: ReactNode;
+  readonly pages?: AppPageElements;
 }
 
 type AuthState =
@@ -55,6 +63,7 @@ export function App({
   now = Date.now,
   dashboard,
   setup,
+  pages,
 }: AppProps) {
   const [queryClient] = useState(
     () =>
@@ -76,6 +85,7 @@ export function App({
           now={now}
           dashboard={dashboard}
           setup={setup}
+          pages={pages}
         />
       </Router>
     </QueryClientProvider>
@@ -87,11 +97,13 @@ function AuthRoutes({
   now,
   dashboard,
   setup,
+  pages,
 }: {
   readonly authSessionStore: AuthSessionStore;
   readonly now: () => number;
   readonly setup?: ReactNode;
   readonly dashboard?: ReactNode;
+  readonly pages?: AppPageElements;
 }) {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
 
@@ -156,19 +168,25 @@ function AuthRoutes({
         />
         <Route
           path="/settings/calendars"
-          element={<PlaceholderPage title="接続済みカレンダー" />}
+          element={
+            pages?.calendars ?? <PlaceholderPage title="接続済みカレンダー" />
+          }
         />
         <Route
           path="/settings/destinations"
-          element={<PlaceholderPage title="登録先" />}
+          element={pages?.destinations ?? <PlaceholderPage title="登録先" />}
         />
         <Route
           path="/settings/preferences"
-          element={<PlaceholderPage title="予定設定" />}
+          element={pages?.preferences ?? <PlaceholderPage title="予定設定" />}
         />
         <Route
           path="/settings/external-display"
-          element={<PlaceholderPage title="外部カレンダー表示" />}
+          element={
+            pages?.externalDisplay ?? (
+              <PlaceholderPage title="外部カレンダー表示" />
+            )
+          }
         />
         <Route
           path="/settings/claude"
@@ -176,7 +194,7 @@ function AuthRoutes({
         />
         <Route
           path="/operations"
-          element={<PlaceholderPage title="操作履歴" />}
+          element={pages?.operations ?? <PlaceholderPage title="操作履歴" />}
         />
         <Route
           path="/account"
