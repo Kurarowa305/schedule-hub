@@ -1,5 +1,6 @@
 import { AlertTriangle, CalendarDays, CheckCircle2, Info } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { ExternalDisplayGuide } from "./external-display-guide.js";
 import { Button } from "../../components/ui/button.js";
 
 export interface SettingsCalendar {
@@ -262,6 +263,7 @@ export function ExternalDisplaySettingsPage({
           </div>
         </div>
       </div>
+      <ExternalDisplayGuide />
       <div className="mt-6 grid gap-3">
         {(["TIMETREE", "YAHOO"] as const).map((target) => {
           const current = targets.find((item) => item.target === target);

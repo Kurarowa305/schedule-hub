@@ -48,6 +48,7 @@ export interface CalendarOAuthServiceDependencies {
 }
 
 export interface CalendarOAuthCompletion {
+  readonly userId: string;
   readonly connectionId: string;
   readonly provider: "GOOGLE";
   readonly accountIdentifier: string;
@@ -164,6 +165,7 @@ export class CalendarOAuthService {
       connection,
     );
     return {
+      userId: oauthState.userId,
       connectionId: connection.connectionId,
       provider: connection.provider,
       accountIdentifier: connection.accountIdentifier,

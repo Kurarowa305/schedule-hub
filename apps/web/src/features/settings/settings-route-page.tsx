@@ -63,7 +63,7 @@ export function SettingsRoutePage({
   }
 }
 
-function PreferenceSettingsPage({
+export function PreferenceSettingsPage({
   api,
   initial,
   destinations,
@@ -81,12 +81,38 @@ function PreferenceSettingsPage({
     String(initial.defaultDurationMinutes),
   );
   const [defaultIds, setDefaultIds] = useState(initial.defaultDestinationIds);
+  const [reminderMinutes, setReminderMinutes] = useState(
+    (initial.defaultReminderMinutes ?? []).join(", "),
+  );
+  const [eventColorId, setEventColorId] = useState(
+    initial.defaultEventColorId ?? "",
+  );
+  const [visibility, setVisibility] = useState(
+    initial.defaultVisibility ?? "default",
+  );
   const [message, setMessage] = useState<string | null>(null);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = Number(duration);
+    const reminders =
+      reminderMinutes.trim().length === 0
+        ? []
+        : reminderMinutes.split(",").map((value) => Number(value.trim()));
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > 1440) {
       setMessage("所要時間は1〜1440分で入力してください");
+      return;
+    }
+    if (
+      reminders.some(
+        (minutes) =>
+          !Number.isInteger(minutes) || minutes < 0 || minutes > 40320,
+      )
+    ) {
+      setMessage("通知は0〜40320分の整数をカンマ区切りで入力してください");
+      return;
+    }
+    if (eventColorId !== "" && !/^(?:[1-9]|1[01])$/.test(eventColorId)) {
+      setMessage("予定色は1〜11で入力してください");
       return;
     }
     try {
@@ -99,6 +125,9 @@ function PreferenceSettingsPage({
       timezone,
       defaultDurationMinutes: parsed,
       defaultDestinationIds: defaultIds,
+      defaultReminderMinutes: reminders,
+      defaultEventColorId: eventColorId === "" ? null : eventColorId,
+      defaultVisibility: visibility,
     });
     setMessage("予定設定を保存しました");
   };
@@ -126,6 +155,37 @@ function PreferenceSettingsPage({
             value={duration}
             onChange={(event) => setDuration(event.target.value)}
           />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold">
+          通知（分前・カンマ区切り）
+          <input
+            className="rounded-xl border border-stone-300 px-3 py-2"
+            value={reminderMinutes}
+            onChange={(event) => setReminderMinutes(event.target.value)}
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold">
+          既定の予定色（1〜11）
+          <input
+            className="rounded-xl border border-stone-300 px-3 py-2"
+            value={eventColorId}
+            onChange={(event) => setEventColorId(event.target.value)}
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold">
+          公開範囲
+          <select
+            className="rounded-xl border border-stone-300 px-3 py-2"
+            value={visibility}
+            onChange={(event) =>
+              setVisibility(event.target.value as typeof visibility)
+            }
+          >
+            <option value="default">Google Calendarの既定</option>
+            <option value="private">非公開</option>
+            <option value="public">公開</option>
+            <option value="confidential">予定ありのみ</option>
+          </select>
         </label>
         <fieldset>
           <legend className="text-sm font-semibold">登録先未指定時</legend>

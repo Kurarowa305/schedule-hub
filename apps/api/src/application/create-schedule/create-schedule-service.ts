@@ -78,7 +78,9 @@ export class CreateScheduleService {
       operation.destinationIds,
     );
     const physicalCalendarIds = [
-      ...new Set(destinations.flatMap(({ physicalCalendarIds }) => physicalCalendarIds)),
+      ...new Set(
+        destinations.flatMap(({ physicalCalendarIds }) => physicalCalendarIds),
+      ),
     ];
     const calendars = await this.requireWritableCalendars(
       request.userId,
@@ -93,8 +95,8 @@ export class CreateScheduleService {
       operationId: operation.operationId,
       userId: operation.userId,
       payloadHash,
-      physicalCalendarIds: calendars.map(({ physicalCalendarId }) =>
-        physicalCalendarId,
+      physicalCalendarIds: calendars.map(
+        ({ physicalCalendarId }) => physicalCalendarId,
       ),
       createdAt: now.toISOString(),
       leaseExpiresAt: new Date(
@@ -171,7 +173,10 @@ export class CreateScheduleService {
       destinationIds,
     );
     const byId = new Map(
-      destinations.map((destination) => [destination.destinationId, destination]),
+      destinations.map((destination) => [
+        destination.destinationId,
+        destination,
+      ]),
     );
     for (const destinationId of destinationIds) {
       const destination = byId.get(destinationId);
@@ -225,7 +230,9 @@ export class CreateScheduleService {
     userId: string,
     calendars: readonly PhysicalCalendar[],
   ): Promise<readonly CalendarConnection[]> {
-    const connectionIds = [...new Set(calendars.map(({ connectionId }) => connectionId))];
+    const connectionIds = [
+      ...new Set(calendars.map(({ connectionId }) => connectionId)),
+    ];
     return this.store.getCalendarConnections(userId, connectionIds);
   }
 
@@ -253,7 +260,24 @@ export class CreateScheduleService {
           start: input.start,
           end,
           timezone: preference.timezone,
-          eventColorId: calendar.eventColorId,
+          eventColorId:
+            calendar.eventColorId ?? preference.defaultEventColorId ?? null,
+          ...(preference.defaultVisibility === undefined
+            ? {}
+            : { visibility: preference.defaultVisibility }),
+          ...(preference.defaultReminderMinutes === undefined
+            ? {}
+            : {
+                reminders: {
+                  useDefault: false,
+                  overrides: preference.defaultReminderMinutes.map(
+                    (minutes) => ({
+                      method: "popup" as const,
+                      minutes,
+                    }),
+                  ),
+                },
+              }),
         },
         connection.credentials,
       );
@@ -374,7 +398,9 @@ function requireConnection(
   connections: readonly CalendarConnection[],
   connectionId: string,
 ): CalendarConnection {
-  const connection = connections.find((item) => item.connectionId === connectionId);
+  const connection = connections.find(
+    (item) => item.connectionId === connectionId,
+  );
   if (connection === undefined || connection.status !== "ACTIVE") {
     throw new CreateScheduleError(
       "PROVIDER_AUTH_EXPIRED",
@@ -392,10 +418,11 @@ function aggregateResult(input: {
   readonly executionResults: readonly StoredCalendarExecutionResult[];
   readonly endDefaulted: boolean;
 }): CreateScheduleResult {
-  const destinations: CreateScheduleDestinationResult[] = input.destinations.map(
-    (destination) => {
-      const calendarResults = input.executionResults.filter(({ physicalCalendarId }) =>
-        destination.physicalCalendarIds.includes(physicalCalendarId),
+  const destinations: CreateScheduleDestinationResult[] =
+    input.destinations.map((destination) => {
+      const calendarResults = input.executionResults.filter(
+        ({ physicalCalendarId }) =>
+          destination.physicalCalendarIds.includes(physicalCalendarId),
       );
       const successCount = calendarResults.filter(
         ({ status }) => status === "SUCCESS",
@@ -420,8 +447,7 @@ function aggregateResult(input: {
               ? "PROVIDER_AUTH_EXPIRED"
               : "PROVIDER_API_ERROR",
       };
-    },
-  );
+    });
   const successCount = input.executionResults.filter(
     ({ status }) => status === "SUCCESS",
   ).length;

@@ -10,6 +10,10 @@ export interface UserPreferences {
   readonly timezone: string;
   readonly defaultDurationMinutes: number;
   readonly defaultDestinationIds: readonly string[];
+  readonly defaultReminderMinutes?: readonly number[];
+  readonly defaultEventColorId?: string | null;
+  readonly defaultVisibility?:
+    "default" | "public" | "private" | "confidential";
 }
 
 export interface SettingsSnapshot {

@@ -137,6 +137,15 @@ export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
       timezone: item.timezone,
       defaultDurationMinutes: item.defaultDurationMinutes,
       defaultDestinationIds: item.defaultDestinationIds,
+      ...(item.defaultReminderMinutes === undefined
+        ? {}
+        : { defaultReminderMinutes: item.defaultReminderMinutes }),
+      ...(item.defaultEventColorId === undefined
+        ? {}
+        : { defaultEventColorId: item.defaultEventColorId }),
+      ...(item.defaultVisibility === undefined
+        ? {}
+        : { defaultVisibility: item.defaultVisibility }),
     };
   }
 

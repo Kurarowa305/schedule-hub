@@ -213,7 +213,10 @@ Response:
     "userId": "<cognito-sub>",
     "timezone": "Asia/Tokyo",
     "defaultDurationMinutes": 120,
-    "defaultDestinationIds": ["dest_xxx"]
+    "defaultDestinationIds": ["dest_xxx"],
+    "defaultReminderMinutes": [10, 30],
+    "defaultEventColorId": "5",
+    "defaultVisibility": "private"
   }
 }
 ```
@@ -228,7 +231,10 @@ Request:
 {
   "timezone": "Asia/Tokyo",
   "defaultDurationMinutes": 120,
-  "defaultDestinationIds": ["dest_xxx"]
+  "defaultDestinationIds": ["dest_xxx"],
+  "defaultReminderMinutes": [10, 30],
+  "defaultEventColorId": "5",
+  "defaultVisibility": "private"
 }
 ```
 
@@ -239,6 +245,9 @@ Validation:
 - `timezone` はIANA Time Zone
 - `defaultDurationMinutes` は1以上
 - `defaultDestinationIds` は認証ユーザーが所有し、有効なDestinationのみ
+- `defaultReminderMinutes` は0〜40320の整数配列（空配列は通知なし）
+- `defaultEventColorId` は`null`またはGoogle Calendarの色ID 1〜11
+- `defaultVisibility` は`default` / `public` / `private` / `confidential`
 
 ---
 
