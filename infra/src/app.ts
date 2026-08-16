@@ -21,13 +21,24 @@ class DataStack extends Stack {
   public constructor(scope: App, props?: StackProps) {
     super(scope, "Data", { ...props, stackName: stackName("Data") });
 
-    new dynamodb.Table(this, "ScheduleHubTable", {
+    const table = new dynamodb.Table(this, "ScheduleHubTable", {
       tableName: "schedule-hub-main",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      timeToLiveAttribute: "ttl",
       removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    table.addGlobalSecondaryIndex({
+      indexName: "GSI1",
+      partitionKey: {
+        name: "GSI1PK",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
   }
 }
