@@ -1,5 +1,6 @@
 import type { LogicalDestination, UserPreference } from "@schedule-hub/shared";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -8,6 +9,7 @@ import {
 import type {
   Page,
   ScheduleHubRepository,
+  StoredCalendarConnection,
   StoredCreateOperation,
   StoredOAuthState,
 } from "../../application/ports/schedule-hub-repository.js";
@@ -36,6 +38,12 @@ interface OAuthStateItem extends StoredOAuthState {
   readonly PK: string;
   readonly SK: "META";
   readonly entityType: "OAuthState";
+}
+
+interface CalendarConnectionItem extends StoredCalendarConnection {
+  readonly PK: string;
+  readonly SK: string;
+  readonly entityType: "CalendarConnection";
 }
 
 export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
@@ -155,7 +163,8 @@ export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
           ":prefix": "DEST#",
         },
         Limit: limit,
-        ExclusiveStartKey: cursor === undefined ? undefined : decodeCursor(cursor),
+        ExclusiveStartKey:
+          cursor === undefined ? undefined : decodeCursor(cursor),
       }),
     );
     return {
@@ -229,6 +238,76 @@ export class DynamoDbScheduleHubRepository implements ScheduleHubRepository {
       purpose: item.purpose,
       createdAt: item.createdAt,
       ttl: item.ttl,
+    };
+  }
+  public async takeOAuthState(state: string): Promise<StoredOAuthState | null> {
+    const result = await this.client.send(
+      new DeleteCommand({
+        TableName: this.tableName,
+        Key: { PK: oauthStatePk(state), SK: "META" },
+        ReturnValues: "ALL_OLD",
+      }),
+    );
+    if (result.Attributes === undefined) return null;
+    const item = result.Attributes as OAuthStateItem;
+    return {
+      state: item.state,
+      userId: item.userId,
+      provider: item.provider,
+      purpose: item.purpose,
+      createdAt: item.createdAt,
+      ttl: item.ttl,
+    };
+  }
+
+  public async putCalendarConnection(
+    userId: string,
+    connection: StoredCalendarConnection,
+  ): Promise<void> {
+    const item: CalendarConnectionItem = {
+      PK: userPk(userId),
+      SK: `CONN#${connection.connectionId}`,
+      entityType: "CalendarConnection",
+      ...connection,
+    };
+    await this.client.send(
+      new PutCommand({ TableName: this.tableName, Item: item }),
+    );
+  }
+
+  public async findCalendarConnection(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<StoredCalendarConnection | null> {
+    const result = await this.client.send(
+      new QueryCommand({
+        TableName: this.tableName,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        FilterExpression:
+          "#provider = :provider AND accountIdentifier = :account",
+        ExpressionAttributeNames: { "#provider": "provider" },
+        ExpressionAttributeValues: {
+          ":pk": userPk(userId),
+          ":prefix": "CONN#",
+          ":provider": provider,
+          ":account": accountIdentifier,
+        },
+        ConsistentRead: true,
+      }),
+    );
+    const item = result.Items?.[0] as CalendarConnectionItem | undefined;
+    if (item === undefined) return null;
+    return {
+      connectionId: item.connectionId,
+      provider: item.provider,
+      accountIdentifier: item.accountIdentifier,
+      accessToken: item.accessToken,
+      refreshToken: item.refreshToken,
+      accessTokenExpiresAt: item.accessTokenExpiresAt,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     };
   }
 }

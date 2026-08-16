@@ -2,6 +2,7 @@ import type { LogicalDestination, UserPreference } from "@schedule-hub/shared";
 import type {
   Page,
   ScheduleHubRepository,
+  StoredCalendarConnection,
   StoredCreateOperation,
   StoredOAuthState,
 } from "../../application/ports/schedule-hub-repository.js";
@@ -11,6 +12,10 @@ export class FakeScheduleHubRepository implements ScheduleHubRepository {
   readonly #destinations = new Map<string, Map<string, LogicalDestination>>();
   readonly #preferences = new Map<string, UserPreference>();
   readonly #oauthStates = new Map<string, StoredOAuthState>();
+  readonly #connections = new Map<
+    string,
+    Map<string, StoredCalendarConnection>
+  >();
 
   public async putCreateOperationIfAbsent(
     operation: StoredCreateOperation,
@@ -50,6 +55,34 @@ export class FakeScheduleHubRepository implements ScheduleHubRepository {
   public async getOAuthState(state: string): Promise<StoredOAuthState | null> {
     const oauthState = this.#oauthStates.get(state);
     return oauthState === undefined ? null : structuredClone(oauthState);
+  }
+
+  public async takeOAuthState(state: string): Promise<StoredOAuthState | null> {
+    const value = this.#oauthStates.get(state);
+    this.#oauthStates.delete(state);
+    return value === undefined ? null : structuredClone(value);
+  }
+
+  public async putCalendarConnection(
+    userId: string,
+    connection: StoredCalendarConnection,
+  ): Promise<void> {
+    const values = this.#connections.get(userId) ?? new Map();
+    values.set(connection.connectionId, structuredClone(connection));
+    this.#connections.set(userId, values);
+  }
+
+  public async findCalendarConnection(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<StoredCalendarConnection | null> {
+    const value = [...(this.#connections.get(userId)?.values() ?? [])].find(
+      (candidate) =>
+        candidate.provider === provider &&
+        candidate.accountIdentifier === accountIdentifier,
+    );
+    return value === undefined ? null : structuredClone(value);
   }
 
   public async putLogicalDestination(
@@ -99,9 +132,10 @@ export class FakeScheduleHubRepository implements ScheduleHubRepository {
     assertLimit(limit);
     const items = [...this.#operations.values()]
       .filter((operation) => operation.userId === userId)
-      .sort((left, right) =>
-        right.createdAt.localeCompare(left.createdAt) ||
-        right.operationId.localeCompare(left.operationId),
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) ||
+          right.operationId.localeCompare(left.operationId),
       );
     const startAfter = cursor === undefined ? null : decodeCursor(cursor);
     const startIndex =
