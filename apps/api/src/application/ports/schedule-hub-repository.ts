@@ -22,6 +22,18 @@ export interface StoredOAuthState {
   readonly ttl: number;
 }
 
+export interface StoredCalendarConnection {
+  readonly connectionId: string;
+  readonly provider: "GOOGLE";
+  readonly accountIdentifier: string;
+  readonly accessToken: string;
+  readonly refreshToken: string;
+  readonly accessTokenExpiresAt: number;
+  readonly status: "ACTIVE" | "REAUTH_REQUIRED";
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface Page<T> {
   readonly items: readonly T[];
   readonly nextCursor: string | null;
@@ -52,4 +64,14 @@ export interface ScheduleHubRepository {
   ): Promise<Page<StoredCreateOperation>>;
   putOAuthState(state: StoredOAuthState): Promise<void>;
   getOAuthState(state: string): Promise<StoredOAuthState | null>;
+  takeOAuthState(state: string): Promise<StoredOAuthState | null>;
+  findCalendarConnection(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<StoredCalendarConnection | null>;
+  putCalendarConnection(
+    userId: string,
+    connection: StoredCalendarConnection,
+  ): Promise<void>;
 }
