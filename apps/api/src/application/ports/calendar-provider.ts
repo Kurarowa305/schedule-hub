@@ -22,6 +22,7 @@ export interface CalendarEventCreateInput {
   readonly physicalCalendarId: string;
   readonly externalCalendarId: string;
   readonly title: string;
+  readonly location?: string;
   readonly description?: string;
   readonly scheduleType: ScheduleType;
   readonly start: string;

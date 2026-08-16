@@ -24,6 +24,7 @@ export interface GoogleEventDateTime {
 export interface GoogleEventResource {
   readonly id: string;
   readonly summary: string;
+  readonly location?: string;
   readonly description?: string;
   readonly start: GoogleEventDateTime;
   readonly end: GoogleEventDateTime;
@@ -111,6 +112,7 @@ export class GoogleCalendarAdapter implements CalendarProviderAdapter {
       event: {
         id: externalEventId,
         summary: input.title,
+        ...(input.location === undefined ? {} : { location: input.location }),
         ...(input.description === undefined
           ? {}
           : { description: input.description }),

@@ -21,6 +21,7 @@ const timedInput: CalendarEventCreateInput = {
   physicalCalendarId: "pcal-work",
   externalCalendarId: "work@example.com",
   title: "定例会議",
+  location: "会議室A",
   description: "週次の打ち合わせ",
   scheduleType: "TIMED",
   start: "2026-08-17T10:00:00+09:00",
@@ -60,6 +61,7 @@ describe("GoogleCalendarAdapter", () => {
       event: {
         id: result.externalEventId,
         summary: "定例会議",
+        location: "会議室A",
         description: "週次の打ち合わせ",
         start: {
           dateTime: "2026-08-17T10:00:00+09:00",

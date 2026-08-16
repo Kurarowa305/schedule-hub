@@ -123,13 +123,14 @@ function assertEventPeriod(
   const datePattern = /^\d{4}-\d{2}-\d{2}$/;
   const startTime = Date.parse(start);
   const endTime = Date.parse(end);
+  const invalidOrder = isAllDay ? endTime < startTime : endTime <= startTime;
 
   if (
     (isAllDay && (!datePattern.test(start) || !datePattern.test(end))) ||
     (!isAllDay && (!Number.isFinite(startTime) || !Number.isFinite(endTime))) ||
     !Number.isFinite(startTime) ||
     !Number.isFinite(endTime) ||
-    endTime <= startTime
+    invalidOrder
   ) {
     throw new DomainValidationError(
       "INVALID_EVENT_PERIOD",
