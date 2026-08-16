@@ -94,6 +94,9 @@ SK = PROFILE
   "timezone": "Asia/Tokyo",
   "defaultDurationMinutes": 120,
   "defaultDestinationIds": ["private"],
+  "defaultReminderMinutes": [10, 30],
+  "defaultEventColorId": "5",
+  "defaultVisibility": "private",
   "createdAt": "2026-08-13T13:00:00+09:00",
   "updatedAt": "2026-08-13T13:30:00+09:00"
 }

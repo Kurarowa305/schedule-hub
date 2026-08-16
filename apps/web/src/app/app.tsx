@@ -43,6 +43,7 @@ export interface AppProps {
   readonly dashboard?: ReactNode;
   readonly setup?: ReactNode;
   readonly pages?: AppPageElements;
+  readonly onSignIn?: () => Promise<void>;
 }
 
 type AuthState =
@@ -64,6 +65,7 @@ export function App({
   dashboard,
   setup,
   pages,
+  onSignIn = async () => undefined,
 }: AppProps) {
   const [queryClient] = useState(
     () =>
@@ -86,6 +88,7 @@ export function App({
           dashboard={dashboard}
           setup={setup}
           pages={pages}
+          onSignIn={onSignIn}
         />
       </Router>
     </QueryClientProvider>
@@ -98,12 +101,14 @@ function AuthRoutes({
   dashboard,
   setup,
   pages,
+  onSignIn,
 }: {
   readonly authSessionStore: AuthSessionStore;
   readonly now: () => number;
   readonly setup?: ReactNode;
   readonly dashboard?: ReactNode;
   readonly pages?: AppPageElements;
+  readonly onSignIn: () => Promise<void>;
 }) {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
 
@@ -139,7 +144,7 @@ function AuthRoutes({
           auth.status === "authenticated" ? (
             <Navigate to="/dashboard" replace />
           ) : (
-            <SignInPage />
+            <SignInPage onSignIn={onSignIn} />
           )
         }
       />
@@ -282,7 +287,7 @@ function Brand() {
   );
 }
 
-function SignInPage() {
+function SignInPage({ onSignIn }: { readonly onSignIn: () => Promise<void> }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--surface)] px-5">
       <section className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-8 shadow-[0_24px_80px_-36px_rgba(15,118,110,0.35)]">
@@ -296,7 +301,9 @@ function SignInPage() {
         <p className="mt-4 leading-7 text-stone-600">
           Googleカレンダーの登録先を整えて、予定作成はClaudeに任せましょう。
         </p>
-        <Button className="mt-8 w-full">Googleで続ける</Button>
+        <Button className="mt-8 w-full" onClick={() => void onSignIn()}>
+          Googleで続ける
+        </Button>
       </section>
     </main>
   );
