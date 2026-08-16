@@ -5,6 +5,7 @@ import type {
   StoredCalendarConnection,
   StoredCreateOperation,
   StoredOAuthState,
+  StoredPhysicalCalendar,
 } from "../../application/ports/schedule-hub-repository.js";
 
 export class FakeScheduleHubRepository implements ScheduleHubRepository {
@@ -15,6 +16,11 @@ export class FakeScheduleHubRepository implements ScheduleHubRepository {
   readonly #connections = new Map<
     string,
     Map<string, StoredCalendarConnection>
+  >();
+
+  readonly #physicalCalendars = new Map<
+    string,
+    Map<string, StoredPhysicalCalendar>
   >();
 
   public async putCreateOperationIfAbsent(
@@ -83,6 +89,46 @@ export class FakeScheduleHubRepository implements ScheduleHubRepository {
         candidate.accountIdentifier === accountIdentifier,
     );
     return value === undefined ? null : structuredClone(value);
+  }
+
+  public async getCalendarConnection(
+    userId: string,
+    connectionId: string,
+  ): Promise<StoredCalendarConnection | null> {
+    const value = this.#connections.get(userId)?.get(connectionId);
+    return value === undefined ? null : structuredClone(value);
+  }
+
+  public async putPhysicalCalendar(
+    userId: string,
+    calendar: StoredPhysicalCalendar,
+  ): Promise<void> {
+    const values = this.#physicalCalendars.get(userId) ?? new Map();
+    values.set(calendar.physicalCalendarId, structuredClone(calendar));
+    this.#physicalCalendars.set(userId, values);
+  }
+
+  public async listPhysicalCalendarsForAccount(
+    userId: string,
+    provider: "GOOGLE",
+    accountIdentifier: string,
+  ): Promise<readonly StoredPhysicalCalendar[]> {
+    const connectionIds = new Set(
+      [...(this.#connections.get(userId)?.values() ?? [])]
+        .filter(
+          (connection) =>
+            connection.provider === provider &&
+            connection.accountIdentifier === accountIdentifier,
+        )
+        .map((connection) => connection.connectionId),
+    );
+    return structuredClone(
+      [...(this.#physicalCalendars.get(userId)?.values() ?? [])].filter(
+        (calendar) =>
+          calendar.provider === provider &&
+          connectionIds.has(calendar.connectionId),
+      ),
+    );
   }
 
   public async putLogicalDestination(
